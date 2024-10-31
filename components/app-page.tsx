@@ -105,7 +105,7 @@ export default function Pages() {
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Mobile Header */}
-      <header className="md:hidden flex justify-center items-center p-4 bg-white shadow-sm">
+      <header className="md:hidden flex justify-center items-center p-1 bg-white shadow-sm">
         <Link href="/" className="flex items-center">
           <Image src={mumbra} alt="Mumbra Logo" width={250} height={200} className="mr-2" />
         </Link>
@@ -126,7 +126,7 @@ export default function Pages() {
         </nav>
       </header>
 
-      <main className="flex-grow pt-16 md:pt-0 pb-16 md:pb-0">
+      <main className="flex-grow pt-1 md:pt-0 pb-16 md:pb-0">
         {/* Carousel Section */}
         <section className="relative bg-[#000050] text-white" aria-label="Brand Promotions">
           <div className="relative h-[50vh] md:h-[60vh] overflow-hidden">
