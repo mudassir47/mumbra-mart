@@ -8,12 +8,28 @@ import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Home, Search, Heart, ShoppingCart, User, Truck, Shield, HandMetal, Store, ChevronLeft, ChevronRight, Zap, Coffee, Shirt } from 'lucide-react'
+import { 
+  Home, Search, Heart, ShoppingCart, User, Truck, Shield, 
+  HandMetal, Store, ChevronLeft, ChevronRight, Zap, Coffee, Shirt 
+} from 'lucide-react'
 import mumbra from "@/img/Mumbra.png"
 import m1 from "@/img/1.png"
 
 import { database } from '@/firebase'
 import { ref, onValue } from 'firebase/database'
+
+// Define the Product and UserType interfaces here
+interface Product {
+  id: string; // Ensure the ID type matches your data
+  heading: string;
+  imageURL?: string; // Optional property
+  price: number;
+  category: string; // Ensure you have a category property
+}
+
+interface UserType {
+  products?: Record<string, Product>; // Assuming a user can have multiple products
+}
 
 const benefits = [
   { icon: Truck, title: "Fast Delivery", description: "Get your products delivered quickly and efficiently" },
@@ -47,19 +63,19 @@ const carouselItems = [
 ]
 
 export default function Pages() {
-  const [currentSlide, setCurrentSlide] = useState(0)
-  const [products, setProducts] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [currentSlide, setCurrentSlide] = useState<number>(0)
+  const [products, setProducts] = useState<Product[]>([]) // Use Product[]
+  const [loading, setLoading] = useState<boolean>(true) // Specify boolean
 
   useEffect(() => {
     const productsRef = ref(database, 'users')
     onValue(productsRef, (snapshot) => {
-      const usersData = snapshot.val()
-      const allProducts: any[] = []
+      const usersData: Record<string, UserType> | null = snapshot.val()
+      const allProducts: Product[] = []
       if (usersData) {
-        Object.values(usersData).forEach((user: any) => {
+        Object.values(usersData).forEach((user: UserType) => {
           if (user.products) {
-            Object.values(user.products).forEach((product: any) => {
+            Object.values(user.products).forEach((product: Product) => {
               allProducts.push(product)
             })
           }
@@ -181,8 +197,8 @@ export default function Pages() {
           </TabsList>
           <TabsContent value="all" className="mt-0">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {products.map((product, index) => (
-                <Card key={index}>
+              {products.map((product) => (
+                <Card key={product.id}>
                   <CardContent className="p-4">
                     <Image
                       src={product.imageURL || m1}
@@ -203,8 +219,8 @@ export default function Pages() {
           {['Electronics', 'Sports', 'Home'].map((category) => (
             <TabsContent key={category} value={category} className="mt-0">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {products.filter(p => p.category === category).map((product, index) => (
-                  <Card key={index}>
+                {products.filter(p => p.category === category).map((product) => (
+                  <Card key={product.id}>
                     <CardContent className="p-4">
                       <Image
                         src={product.imageURL || m1}

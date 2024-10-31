@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BottomNav } from '@/components/BottomNav'
-import { Settings, CreditCard, User, ShoppingBag } from 'lucide-react'
+import { CreditCard, ShoppingBag } from 'lucide-react' // Removed unused imports
 import { auth, database, ref, get, update } from '@/firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 

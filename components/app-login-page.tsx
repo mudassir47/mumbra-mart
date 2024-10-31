@@ -12,13 +12,21 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import mumbra from "@/img/2.png"
 
+// Define a User type to avoid using `any`
+interface User {
+  uid: string;
+  displayName: string | null;
+  email: string | null;
+  photoURL: string | null;
+}
+
 export function Login() {
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [isNewUser, setIsNewUser] = useState(false)
-  const [currentUser, setCurrentUser] = useState<any>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [email, setEmail] = useState<string>('') // Specify type as string
+  const [phone, setPhone] = useState<string>('') // Specify type as string
+  const [isNewUser, setIsNewUser] = useState<boolean>(false) // Specify type as boolean
+  const [currentUser, setCurrentUser] = useState<User | null>(null) // Specify type as User | null
+  const [loading, setLoading] = useState<boolean>(false) // Specify type as boolean
+  const [error, setError] = useState<string | null>(null) // Specify type as string | null
   const router = useRouter()
 
   const handleGoogleLogin = async () => {
@@ -26,7 +34,7 @@ export function Login() {
     setError(null)
     try {
       const result = await signInWithPopup(auth, provider)
-      const user = result.user
+      const user = result.user as User; // Specify type as User
       setCurrentUser(user)
 
       const userRef = ref(database, `users/${user.uid}`)
@@ -47,7 +55,7 @@ export function Login() {
         })
         setIsNewUser(true)
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error during Google login:', error)
       setError('Failed to sign in with Google. Please try again.')
     } finally {
@@ -86,7 +94,7 @@ export function Login() {
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (currentUser) {
-      const phoneRegex = /^(\d{3}-\d{3}-\d{4}|\d{10})$/
+      const phoneRegex = /^(\d{3}-\d{3}-\d{4}|\d{10})$/;
       if (!phoneRegex.test(phone)) {
         setError('Please enter a valid phone number (e.g., 123-456-7890 or 1234567890).')
         return
@@ -100,7 +108,7 @@ export function Login() {
           phoneNumber: phone,
         })
         router.push('/')
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error saving phone number:', error)
         setError('Failed to save phone number. Please try again.')
       } finally {

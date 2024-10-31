@@ -2,89 +2,99 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { auth, database, storage } from '@/firebase'
-import { onAuthStateChanged } from 'firebase/auth'
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import Image from 'next/image'
-import { ref as dbRef, push, set } from 'firebase/database'
-import { ref as storageRef, getDownloadURL, uploadBytes } from 'firebase/storage'
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { auth, database, storage } from '@/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import Image from 'next/image';
+import { ref as dbRef, push, set } from 'firebase/database';
+import { ref as storageRef, getDownloadURL, uploadBytes } from 'firebase/storage';
+
+// Define types for your product
+interface Product {
+  category: string;
+  createdAt: number;
+  description: string;
+  heading: string;
+  imageURL: string;
+  price: number;
+}
 
 export default function ShopAdmin() {
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [heading, setHeading] = useState('')
-  const [description, setDescription] = useState('')
-  const [price, setPrice] = useState('')
-  const [category, setCategory] = useState('Electronics')
-  const [image, setImage] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-  const [imageOption, setImageOption] = useState<'upload' | 'url'>('upload') // Updated to 'url'
-  const [imageURL, setImageURL] = useState<string | null>(''); // For URL input
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [heading, setHeading] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [category, setCategory] = useState('Electronics');
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [imageOption, setImageOption] = useState<'upload' | 'url'>('upload');
+  const [imageURL, setImageURL] = useState<string>(''); // For URL input
 
-  const router = useRouter()
+  const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
-        setUser(currentUser)
+        setUser(currentUser);
       } else {
-        router.push('/login') // Redirect to login if not authenticated
+        router.push('/login'); // Redirect to login if not authenticated
       }
-      setLoading(false)
-    })
+      setLoading(false);
+    });
 
-    return () => unsubscribe()
-  }, [router])
+    return () => unsubscribe();
+  }, [router]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0]
-      setImage(file)
-      setImagePreview(URL.createObjectURL(file))
+      const file = e.target.files[0];
+      setImage(file);
+      setImagePreview(URL.createObjectURL(file));
     }
-  }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setSuccess(null)
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
 
     if (!heading || !description || !price || !category) {
-      setError('Please fill in all fields.')
-      return
+      setError('Please fill in all fields.');
+      return;
     }
 
     let imageURLToSave = '';
 
     if (imageOption === 'upload' && !image) {
-      setError('Please upload an image.')
-      return
+      setError('Please upload an image.');
+      return;
     }
 
     if (imageOption === 'url' && !imageURL) {
-      setError('Please enter a valid image URL.')
+      setError('Please enter a valid image URL.');
       return;
     }
 
     try {
       if (imageOption === 'upload') {
-        const storageRefPath = `products/${user.uid}/${Date.now()}_${image!.name}`
-        const imageRef = storageRef(storage, storageRefPath)
-        const snapshot = await uploadBytes(imageRef, image!)
-        imageURLToSave = await getDownloadURL(snapshot.ref)
+        const storageRefPath = `products/${user.uid}/${Date.now()}_${image!.name}`;
+        const imageRef = storageRef(storage, storageRefPath);
+        const snapshot = await uploadBytes(imageRef, image!);
+        imageURLToSave = await getDownloadURL(snapshot.ref);
       } else if (imageOption === 'url') {
-        imageURLToSave = imageURL!;
+        imageURLToSave = imageURL;
       }
 
-      const productsRef = dbRef(database, `users/${user.uid}/products`)
-      const newProductRef = push(productsRef)
+      const productsRef = dbRef(database, `users/${user.uid}/products`);
+      const newProductRef = push(productsRef);
       await set(newProductRef, {
         heading,
         description,
@@ -92,24 +102,24 @@ export default function ShopAdmin() {
         category,
         imageURL: imageURLToSave,
         createdAt: Date.now(),
-      })
+      });
 
-      setSuccess('Product added successfully!')
-      setHeading('')
-      setDescription('')
-      setPrice('')
-      setCategory('Electronics')
-      setImage(null)
-      setImagePreview(null)
+      setSuccess('Product added successfully!');
+      setHeading('');
+      setDescription('');
+      setPrice('');
+      setCategory('Electronics');
+      setImage(null);
+      setImagePreview(null);
       setImageURL(''); // Clear input URL
-    } catch (err: any) {
-      console.error('Error adding product:', err.message || err)
-      setError('Failed to add product. Please try again.')
+    } catch (err) {
+      console.error('Error adding product:', err);
+      setError('Failed to add product. Please try again.');
     }
-  }
+  };
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
   return (
@@ -227,5 +237,5 @@ export default function ShopAdmin() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
