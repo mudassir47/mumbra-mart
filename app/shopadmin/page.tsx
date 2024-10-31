@@ -1,5 +1,3 @@
-// app/shopadmin/page.tsx
-
 'use client'
 
 import { useState, useEffect } from 'react';
@@ -13,19 +11,13 @@ import { Label } from "@/components/ui/label";
 import Image from 'next/image';
 import { ref as dbRef, push, set } from 'firebase/database';
 import { ref as storageRef, getDownloadURL, uploadBytes } from 'firebase/storage';
+import { User as FirebaseUser } from 'firebase/auth'; // Import User type from Firebase
 
 // Define types for your product
-interface Product {
-  category: string;
-  createdAt: number;
-  description: string;
-  heading: string;
-  imageURL: string;
-  price: number;
-}
+
 
 export default function ShopAdmin() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null); // Use FirebaseUser type
   const [loading, setLoading] = useState(true);
   const [heading, setHeading] = useState('');
   const [description, setDescription] = useState('');
@@ -85,7 +77,7 @@ export default function ShopAdmin() {
 
     try {
       if (imageOption === 'upload') {
-        const storageRefPath = `products/${user.uid}/${Date.now()}_${image!.name}`;
+        const storageRefPath = `products/${user!.uid}/${Date.now()}_${image!.name}`; // Use non-null assertion
         const imageRef = storageRef(storage, storageRefPath);
         const snapshot = await uploadBytes(imageRef, image!);
         imageURLToSave = await getDownloadURL(snapshot.ref);
@@ -93,7 +85,7 @@ export default function ShopAdmin() {
         imageURLToSave = imageURL;
       }
 
-      const productsRef = dbRef(database, `users/${user.uid}/products`);
+      const productsRef = dbRef(database, `users/${user!.uid}/products`); // Use non-null assertion
       const newProductRef = push(productsRef);
       await set(newProductRef, {
         heading,

@@ -9,9 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
-  Home, Search, Heart, ShoppingCart, User, Truck, Shield, 
-  HandMetal, Store, ChevronLeft, ChevronRight, Zap, Coffee, Shirt 
-} from 'lucide-react'
+  Truck, Shield, HandMetal, Store, ChevronLeft, ChevronRight, Zap, Coffee, Shirt 
+} from 'lucide-react' // Removed unused imports
 import mumbra from "@/img/Mumbra.png"
 import m1 from "@/img/1.png"
 
