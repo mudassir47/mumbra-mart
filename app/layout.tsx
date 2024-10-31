@@ -1,9 +1,10 @@
-// app/layout.jsx or app/layout.tsx
+// app/layout.tsx or app/layout.jsx
 
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import './globals.css';
 import { BottomNav } from '@/components/BottomNav'; // Import the BottomNav component
+import { useRouter } from 'next/router'; // Import useRouter
 
 const geistSans = localFont({
   src: './fonts/GeistVF.woff',
@@ -26,20 +27,19 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const router = useRouter(); // Get the router instance
+
   return (
     <html lang="en">
-
-
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
-        >
+      >
         {/* Main Content */}
         <main className="flex-grow pb-16 md:pb-0">{children}</main>
 
-        {/* Bottom Navigation */}
-        <BottomNav />
+        {/* Bottom Navigation - Render only if not on the login page */}
+        {router.pathname !== '/login' && <BottomNav />}
       </body>
-    
     </html>
   );
 }
