@@ -163,7 +163,7 @@ export function Login() {
               height={150} // Adjusted size
             />
           </div>
-          <CardTitle className="text-xl font-bold text-center">Welcome to ShopNow</CardTitle>
+          <CardTitle className="text-xl font-bold text-center">Welcome to MUMBRA MART</CardTitle>
           <CardDescription className="text-center">
             Sign in to your account or create a new one
           </CardDescription>
