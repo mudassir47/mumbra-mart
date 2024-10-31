@@ -1,10 +1,9 @@
 import React from 'react'
-import Pages from '@/components/app-page'
-
+import { Profile } from '@/components/app-profile-page'
 const page = () => {
   return (
     <div>
-      <Pages/>
+      <Profile/>
     </div>
   )
 }
