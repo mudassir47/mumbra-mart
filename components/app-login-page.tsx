@@ -120,9 +120,9 @@ export function Login() {
   if (isNewUser && currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#000050] p-4">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-sm"> {/* Adjusted width and height */}
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Welcome, {currentUser.displayName}</CardTitle>
+            <CardTitle className="text-xl font-bold text-center">Welcome, {currentUser.displayName}</CardTitle>
             <CardDescription className="text-center">
               Please enter your phone number to complete registration
             </CardDescription>
@@ -153,17 +153,17 @@ export function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#000050] p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-sm"> {/* Adjusted width and height */}
         <CardHeader className="space-y-1">
           <div className="flex justify-center mb-4">
             <Image
               src={mumbra} // Use the imported mumbra image here
               alt="Mumbra Logo"
-              width={250}
-              height={200}
+              width={200} // Adjusted size
+              height={150} // Adjusted size
             />
           </div>
-          <CardTitle className="text-2xl font-bold text-center">Welcome to ShopNow</CardTitle>
+          <CardTitle className="text-xl font-bold text-center">Welcome to ShopNow</CardTitle>
           <CardDescription className="text-center">
             Sign in to your account or create a new one
           </CardDescription>
