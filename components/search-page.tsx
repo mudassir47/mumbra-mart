@@ -166,7 +166,7 @@ export function SearchPageComponent() {
                         alt={product.heading}
                         width={200}
                         height={200}
-                        className="w-full h-48 object-cover mb-4 rounded"
+                        className="w-full h-32 object-cover mb-4 rounded"
                       />
                       <h3 className="font-semibold text-lg mb-2 line-clamp-2">{product.heading}</h3>
                       <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
