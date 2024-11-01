@@ -5,7 +5,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,13 +19,13 @@ import {
   Zap,
   Coffee,
   Shirt,
-} from 'lucide-react'; // Removed unused imports
+} from 'lucide-react';
 import mumbra from '@/img/Mumbra.png';
 import m1 from '@/img/1.png';
 import { database } from '@/firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, get, child } from 'firebase/database';
 
-// Define the Product and UserType interfaces here
+// Define the Product and UserType interfaces
 interface Product {
   id: string; // Firebase push key
   heading: string;
@@ -34,11 +34,18 @@ interface Product {
   category: string;
   description?: string;
   ownerUid: string; // UID of the user who owns the product
+  distance?: number; // Distance from the user in kilometers
 }
 
 interface UserType {
   products?: Record<string, Product>;
   product?: Record<string, Product>;
+  shop?: {
+    latitude: number;
+    longitude: number;
+    shopName: string;
+    shopNumber: string;
+  };
 }
 
 const benefits = [
@@ -88,36 +95,45 @@ const carouselItems = [
   },
 ];
 
+// Helper function to calculate distance between two coordinates using Haversine formula
+const getDistanceFromLatLonInKm = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number => {
+  const R = 6371; // Radius of the earth in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c; // Distance in km
+  return distance;
+};
+
+// Helper function to format distance
+const formatDistance = (distance: number): string => {
+  if (distance < 1) {
+    const meters = Math.round(distance * 1000);
+    return `${meters} m`;
+  }
+  return `${distance.toFixed(2)} km`;
+};
+
 export default function Pages() {
-  const router = useRouter(); // Initialize the router inside the Pages component
+  const router = useRouter();
   const [currentSlide, setCurrentSlide] = useState<number>(0);
-  const [products, setProducts] = useState<Product[]>([]); // Use Product[]
-  const [loading, setLoading] = useState<boolean>(true); // Specify boolean
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const productsRef = ref(database, 'users');
-    onValue(productsRef, (snapshot) => {
-      const usersData: Record<string, UserType> | null = snapshot.val();
-      const allProducts: Product[] = [];
-      if (usersData) {
-        Object.entries(usersData).forEach(([userUid, user]) => {
-          if (user.products) {
-            Object.entries(user.products).forEach(([productId, product]) => {
-              allProducts.push({ ...product, id: productId, ownerUid: userUid });
-            });
-          }
-          if (user.product) {
-            Object.entries(user.product).forEach(([productId, product]) => {
-              allProducts.push({ ...product, id: productId, ownerUid: userUid });
-            });
-          }
-        });
-      }
-      setProducts(allProducts);
-      setLoading(false);
-    });
-  }, []);
-
+  // Carousel navigation
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % carouselItems.length);
   };
@@ -130,6 +146,131 @@ export default function Pages() {
     const timer = setInterval(nextSlide, 5000);
     return () => clearInterval(timer);
   }, []);
+
+  // Fetch user's location
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by your browser');
+      fetchProducts();
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation({ latitude, longitude });
+      },
+      (err) => {
+        console.error(err);
+        setError('Failed to get your location');
+        fetchProducts(); // Fetch products without sorting
+      }
+    );
+  }, []);
+
+  // Fetch products from Firebase
+  useEffect(() => {
+    if (userLocation) {
+      fetchAndSortProducts();
+    } else {
+      fetchProducts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLocation]);
+
+  // Function to fetch products without sorting
+  const fetchProducts = async () => {
+    try {
+      const dbRef = ref(database);
+      const snapshot = await get(child(dbRef, 'users'));
+      if (snapshot.exists()) {
+        const usersData: Record<string, UserType> = snapshot.val();
+        const allProducts: Product[] = [];
+
+        Object.entries(usersData).forEach(([userUid, user]) => {
+          if (user.products) {
+            Object.entries(user.products).forEach(([productId, product]) => {
+              allProducts.push({ ...product, id: productId, ownerUid: userUid });
+            });
+          }
+          if (user.product) {
+            Object.entries(user.product).forEach(([productId, product]) => {
+              allProducts.push({ ...product, id: productId, ownerUid: userUid });
+            });
+          }
+        });
+
+        setProducts(allProducts);
+      } else {
+        setProducts([]);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error(error);
+      setError('Failed to fetch products');
+      setLoading(false);
+    }
+  };
+
+  // Function to fetch and sort products based on user location
+  const fetchAndSortProducts = async () => {
+    if (!userLocation) {
+      // Early return if userLocation is null
+      setError('User location is not available');
+      fetchProducts();
+      return;
+    }
+
+    try {
+      const dbRef = ref(database);
+      const snapshot = await get(child(dbRef, 'users'));
+      if (snapshot.exists()) {
+        const usersData: Record<string, UserType> = snapshot.val();
+        const allProducts: Product[] = [];
+
+        Object.entries(usersData).forEach(([userUid, user]) => {
+          const shopLat = user.shop?.latitude;
+          const shopLon = user.shop?.longitude;
+          if (shopLat == null || shopLon == null) return; // Skip if shop coordinates are missing
+
+          if (user.products) {
+            Object.entries(user.products).forEach(([productId, product]) => {
+              const distance = getDistanceFromLatLonInKm(
+                userLocation.latitude,
+                userLocation.longitude,
+                shopLat,
+                shopLon
+              );
+              allProducts.push({ ...product, id: productId, ownerUid: userUid, distance });
+            });
+          }
+          if (user.product) {
+            Object.entries(user.product).forEach(([productId, product]) => {
+              const distance = getDistanceFromLatLonInKm(
+                userLocation.latitude,
+                userLocation.longitude,
+                shopLat,
+                shopLon
+              );
+              allProducts.push({ ...product, id: productId, ownerUid: userUid, distance });
+            });
+          }
+        });
+
+        // Sort products by distance (nearest first)
+        allProducts.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+
+        setProducts(allProducts);
+      } else {
+        setProducts([]);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error(error);
+      setError('Failed to fetch products');
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -176,6 +317,13 @@ export default function Pages() {
       </header>
 
       <main className="flex-grow pt-1 md:pt-0 pb-16 md:pb-0">
+        {/* Display error message if any */}
+        {error && (
+          <div className="bg-red-100 text-red-700 p-4 text-center">
+            {error}
+          </div>
+        )}
+
         {/* Carousel Section */}
         <section className="relative bg-[#000050] text-white" aria-label="Brand Promotions">
           <div className="relative h-[50vh] md:h-[60vh] overflow-hidden">
@@ -271,28 +419,31 @@ export default function Pages() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {products.map((product) => (
                 <Card key={product.id}>
-               <CardContent className="p-4">
-  <div className="relative w-full h-48 overflow-hidden rounded-lg">
-    <Image
-      src={product.imageURL || m1}
-      alt={product.heading}
-      layout="fill" // Use fill layout to cover the container
-      objectFit="contain" // Adjust this to 'cover' or 'contain' based on your preference
-      className="rounded-lg" // Optional: ensure the image has rounded corners
-    />
-  </div>
-  <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
-  <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
-  <Button
-    className="w-full mt-4 bg-[#000050] hover:bg-[#000080]"
-    onClick={() => router.push(`/addtocart/${product.ownerUid}/${product.id}`)}
-  >
-    Add to Cart
-  </Button>
-</CardContent>
-
-
-
+                  <CardContent className="p-4">
+                    <div className="relative w-full h-48 overflow-hidden rounded-lg">
+                      <Image
+                        src={product.imageURL || m1}
+                        alt={product.heading}
+                        layout="fill"
+                        objectFit="contain"
+                        className="rounded-lg"
+                      />
+                    </div>
+                    <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
+                    <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
+                    <Button
+                      className="w-full mt-4 bg-[#000050] hover:bg-[#000080]"
+                      onClick={() => router.push(`/addtocart/${product.ownerUid}/${product.id}`)}
+                    >
+                      Add to Cart
+                    </Button>
+                    {/* Display distance if available */}
+                    {product.distance !== undefined && (
+                      <p className="mt-2 text-sm text-gray-600">
+                        Distance: {formatDistance(product.distance)}
+                      </p>
+                    )}
+                  </CardContent>
                 </Card>
               ))}
             </div>
@@ -306,13 +457,15 @@ export default function Pages() {
                   .map((product) => (
                     <Card key={product.id}>
                       <CardContent className="p-4">
-                        <Image
-                          src={product.imageURL || m1}
-                          alt={product.heading}
-                          width={200}
-                          height={200}
-                          className="w-full h-48 object-cover mb-4 rounded"
-                        />
+                        <div className="relative w-full h-48 overflow-hidden rounded-lg">
+                          <Image
+                            src={product.imageURL || m1}
+                            alt={product.heading}
+                            layout="fill"
+                            objectFit="contain"
+                            className="rounded-lg"
+                          />
+                        </div>
                         <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
                         <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
                         <Button
@@ -321,6 +474,12 @@ export default function Pages() {
                         >
                           Add to Cart
                         </Button>
+                        {/* Display distance if available */}
+                        {product.distance !== undefined && (
+                          <p className="mt-2 text-sm text-gray-600">
+                            Distance: {formatDistance(product.distance)}
+                          </p>
+                        )}
                       </CardContent>
                     </Card>
                   ))}
