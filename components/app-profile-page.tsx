@@ -1,54 +1,83 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Image from 'next/image'
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { BottomNav } from '@/components/BottomNav'
-import { CreditCard, ShoppingBag } from 'lucide-react' // Removed unused imports
-import { auth, database, ref, get, update } from '@/firebase'
-import { onAuthStateChanged } from 'firebase/auth'
+import React, { useState, useEffect, FormEvent } from 'react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BottomNav } from '@/components/BottomNav';
+import { CreditCard, ShoppingBag } from 'lucide-react';
+import { auth, database } from '@/firebase';
+import { ref, get, update } from 'firebase/database';
+import { onAuthStateChanged, User } from 'firebase/auth';
+
+interface UserData {
+  email: string;
+  latitude: number;
+  longitude: number;
+  name: string;
+  phoneNumber: string;
+  profileImage: string;
+  shop?: {
+    shopName: string;
+    shopNumber: string;
+    latitude: number;
+    longitude: number;
+  };
+}
 
 export function Profile() {
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [profileImage, setProfileImage] = useState('')
-  const [userId, setUserId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [name, setName] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [profileImage, setProfileImage] = useState<string>('');
+  const [userId, setUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [hasShop, setHasShop] = useState<boolean>(false);
+
+  const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user: User | null) => {
       if (user) {
-        setUserId(user.uid)
-        const userRef = ref(database, `users/${user.uid}`)
-        const snapshot = await get(userRef)
+        setUserId(user.uid);
+        const userRef = ref(database, `users/${user.uid}`);
+        const snapshot = await get(userRef);
         if (snapshot.exists()) {
-          const data = snapshot.val()
-          setName(data.name || '')
-          setEmail(data.email || '')
-          setProfileImage(data.profileImage || '')
+          const data: UserData = snapshot.val();
+          setName(data.name || '');
+          setEmail(data.email || '');
+          setProfileImage(data.profileImage || '');
+          setHasShop(!!data.shop);
         }
       }
-      setLoading(false)
-    })
+      setLoading(false);
+    });
 
-    return () => unsubscribe()
-  }, [])
+    return () => unsubscribe();
+  }, []);
 
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleUpdateProfile = async (e: FormEvent) => {
+    e.preventDefault();
     if (userId) {
-      const userRef = ref(database, `users/${userId}`)
-      await update(userRef, { name, email })
-      console.log('Profile updated:', { name, email })
+      const userRef = ref(database, `users/${userId}`);
+      await update(userRef, { name, email });
+      console.log('Profile updated:', { name, email });
     }
-  }
+  };
+
+  const handleRegisterShop = () => {
+    router.push('/registershop'); // Navigate to /registershop
+  };
+
+  const handleGoToShop = () => {
+    router.push('/myshop'); // Navigate to /myshop
+  };
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
   return (
@@ -75,6 +104,22 @@ export function Profile() {
             </div>
           </CardHeader>
         </Card>
+
+        {!hasShop ? (
+          <Button 
+            onClick={handleRegisterShop} 
+            className="mb-6 w-full bg-[#000052] hover:bg-[#000052]/90"
+          >
+            Register a Shop
+          </Button>
+        ) : (
+          <Button 
+            onClick={handleGoToShop} 
+            className="mb-6 w-full bg-[#000052] hover:bg-[#000052]/90"
+          >
+            My Shop
+          </Button>
+        )}
 
         <Tabs defaultValue="account" className="space-y-4">
           <TabsList className="bg-white border-b border-gray-200">
@@ -223,5 +268,5 @@ export function Profile() {
       </div>
       <BottomNav />
     </div>
-  )
+  );
 }

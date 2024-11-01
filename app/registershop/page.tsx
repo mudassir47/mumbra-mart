@@ -1,9 +1,9 @@
 import React from 'react'
-import { ShopAdminComponent } from '@/components/shop-admin'
+import { PricingPageComponent } from '@/components/pricing-page'
 const page = () => {
   return (
     <div>
-      <ShopAdminComponent/>
+      <PricingPageComponent/>
     </div>
   )
 }
