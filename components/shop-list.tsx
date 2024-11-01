@@ -192,7 +192,8 @@ export function ShopListComponent() {
     setFilteredShops(filtered)
   }
 
-  const handleOpenMap = (latitude: number, longitude: number, shopName: string) => {
+  // Updated handleOpenMap function without 'shopName'
+  const handleOpenMap = (latitude: number, longitude: number) => {
     const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
     window.open(googleMapsUrl, '_blank')
   }
@@ -274,7 +275,7 @@ export function ShopListComponent() {
                       <Button 
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleOpenMap(shop.latitude, shop.longitude, shop.name)
+                          handleOpenMap(shop.latitude, shop.longitude)
                         }}
                         className="bg-[#000060] hover:bg-[#000060]/90"
                       >
