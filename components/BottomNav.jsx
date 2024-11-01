@@ -12,7 +12,7 @@ export function BottomNav() {
   const navItems = [
     { href: '/', icon: Home, label: 'Home' },
     { href: '/search', icon: Search, label: 'Search' },
-    { href: '/wishlist', icon: Heart, label: 'Wishlist' },
+    { href: '/nearshop', icon: Heart, label: 'Wishlist' },
     { href: '/cart', icon: ShoppingCart, label: 'Cart' },
     { href: '/profile', icon: User, label: 'Profile' },
   ];
