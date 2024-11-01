@@ -12,20 +12,36 @@ import mumbra from "@/img/Mumbra.png"
 import { database } from '@/firebase'
 import { ref, onValue } from 'firebase/database'
 
-// Define the Shop interface
-interface Shop {
-  id: string; // userUid
-  name: string;
-  photo: string;
-  phone: string;
-  latitude: number;
-  longitude: number;
+// Define the AddToCartItem interface based on Firebase structure
+interface AddToCartItem {
+  addedAt: number;
+  ownerUid: string;
+  productDetails: {
+    heading: string;
+    imageURL?: string;
+    price: number;
+  };
+  productId: string;
+  quantity: number;
+  selectedColor?: string;
+  selectedSize?: string;
+}
+
+// Define the Product interface
+interface Product {
+  id: string;
+  heading: string;
+  imageURL?: string;
+  price: number;
+  category: string;
+  description?: string;
+  ownerUid: string;
   distance?: number; // Distance from user in kilometers
 }
 
 // Define the UserType interface based on Firebase structure
 interface UserType {
-  addtocart?: Record<string, any>;
+  addtocart?: Record<string, AddToCartItem>;
   email?: string;
   latitude?: number;
   longitude?: number;
@@ -38,6 +54,18 @@ interface UserType {
     shopName: string;
     shopNumber: string;
   };
+  products?: Record<string, Product>;
+}
+
+// Define the Shop interface
+interface Shop {
+  id: string; // userUid
+  name: string;
+  photo: string;
+  phone: string;
+  latitude: number;
+  longitude: number;
+  distance?: number; // Distance from user in kilometers
 }
 
 // Helper function to calculate distance between two coordinates using Haversine formula
@@ -111,7 +139,6 @@ export function ShopListComponent() {
       if (usersData) {
         Object.entries(usersData).forEach(([userUid, user]) => {
           if (user.shop) {
-            const shopName = user.shop.shopName
             const shopNumber = user.shop.shopNumber
             const shopLat = user.shop.latitude
             const shopLon = user.shop.longitude
@@ -129,7 +156,7 @@ export function ShopListComponent() {
 
             fetchedShops.push({
               id: userUid,
-              name: shopName,
+              name: user.shop.shopName, // Use directly without assigning to shopName variable
               photo: profileImage,
               phone: shopNumber,
               latitude: shopLat,
