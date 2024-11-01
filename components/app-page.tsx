@@ -48,7 +48,14 @@ interface UserType {
   };
 }
 
-const benefits = [
+// Define the Benefit interface
+interface Benefit {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+}
+
+const benefits: Benefit[] = [
   {
     icon: Truck,
     title: 'Fast Delivery',
@@ -129,6 +136,7 @@ export default function Pages() {
   const router = useRouter();
   const [currentSlide, setCurrentSlide] = useState<number>(0);
   const [products, setProducts] = useState<Product[]>([]);
+  const [nearbyProducts, setNearbyProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -257,10 +265,24 @@ export default function Pages() {
           }
         });
 
-        // Sort products by distance (nearest first)
-        allProducts.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+        // Filter products within 0.5 km (500 meters) and ensure one per shop
+        const nearbyProducts: Product[] = [];
+        const seenShops = new Set<string>();
 
-        setProducts(allProducts);
+        for (const product of allProducts) {
+          if (product.distance !== undefined && product.distance <= 0.5) { // 0.5 km = 500 meters
+            if (!seenShops.has(product.ownerUid)) {
+              nearbyProducts.push(product);
+              seenShops.add(product.ownerUid);
+            }
+          }
+        }
+
+        // Sort the nearby products by distance (nearest first)
+        nearbyProducts.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+
+        setNearbyProducts(nearbyProducts);
+        setProducts(allProducts); // Keep all products for 'All' tab
       } else {
         setProducts([]);
       }
@@ -386,6 +408,44 @@ export default function Pages() {
             ))}
           </div>
         </section>
+
+        {/* Nearby Products Section */}
+        {nearbyProducts.length > 0 && (
+          <section className="w-full mt-8 px-4">
+            <h2 className="text-2xl font-bold mb-4 text-[#000050]">Nearby Shops</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {nearbyProducts.map((product) => (
+                <Card key={product.id}>
+                  <CardContent className="p-4">
+                    <div className="relative w-full h-48 overflow-hidden rounded-lg">
+                      <Image
+                        src={product.imageURL || m1}
+                        alt={product.heading}
+                        layout="fill"
+                        objectFit="contain"
+                        className="rounded-lg"
+                      />
+                    </div>
+                    <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
+                    <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
+                    <Button
+                      className="w-full mt-4 bg-[#000050] hover:bg-[#000080]"
+                      onClick={() => router.push(`/addtocart/${product.ownerUid}/${product.id}`)}
+                    >
+                      Add to Cart
+                    </Button>
+                    {/* Display distance if available */}
+                    {product.distance !== undefined && (
+                      <p className="mt-2 text-sm text-gray-600">
+                        Distance: {formatDistance(product.distance)}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Products Tabs */}
         <Tabs defaultValue="all" className="w-full mt-8 px-4">

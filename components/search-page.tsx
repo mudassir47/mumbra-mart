@@ -15,6 +15,7 @@ import m1 from "@/img/1.png"
 import { database } from '@/firebase'
 import { ref, onValue } from 'firebase/database'
 
+// Define the Product and UserType interfaces
 interface Product {
   id: string;
   heading: string;
@@ -23,19 +24,63 @@ interface Product {
   category: string;
   description?: string;
   ownerUid: string;
+  distance?: number; // Distance from user in kilometers
 }
 
 interface UserType {
   products?: Record<string, Product>;
   product?: Record<string, Product>;
+  shop?: {
+    latitude: number;
+    longitude: number;
+    shopName: string;
+    shopNumber: string;
+  };
 }
 
-const benefits = [
+// Define the Benefit interface
+interface Benefit {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+}
+
+const benefits: Benefit[] = [
   { icon: Truck, title: "Fast Delivery", description: "Get your products delivered quickly and efficiently" },
   { icon: Shield, title: "100% Transparency", description: "Clear and honest information about our products and services" },
   { icon: HandMetal, title: "Hand-to-Hand Transfer", description: "Secure and personal delivery right to your hands" },
   { icon: Store, title: "Connect with Nearby Shops", description: "Support local businesses and get products from shops near you" },
 ]
+
+// Helper function to calculate distance between two coordinates using Haversine formula
+const getDistanceFromLatLonInKm = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number => {
+  const R = 6371; // Radius of the earth in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c; // Distance in km
+  return distance;
+};
+
+// Helper function to format distance
+const formatDistance = (distance: number): string => {
+  if (distance < 1) {
+    const meters = Math.round(distance * 1000);
+    return `${meters} m`;
+  }
+  return `${distance.toFixed(2)} km`;
+}
 
 function BottomNav() {
   const pathname = usePathname();
@@ -77,9 +122,33 @@ export function SearchPageComponent() {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState<boolean>(true)
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const router = useRouter();
 
+  // Fetch user's location
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by your browser');
+      setLoading(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation({ latitude, longitude });
+      },
+      (err) => {
+        console.error(err);
+        setError('Failed to get your location');
+        setLoading(false);
+      }
+    );
+  }, [])
+
+  // Fetch products from Firebase
   useEffect(() => {
     const productsRef = ref(database, 'users')
     onValue(productsRef, (snapshot) => {
@@ -87,23 +156,53 @@ export function SearchPageComponent() {
       const allProducts: Product[] = []
       if (usersData) {
         Object.entries(usersData).forEach(([userUid, user]) => {
+          const shopLat = user.shop?.latitude
+          const shopLon = user.shop?.longitude
+
           if (user.products) {
             Object.entries(user.products).forEach(([productId, product]) => {
-              allProducts.push({ ...product, id: productId, ownerUid: userUid })
+              let distance: number | undefined = undefined
+              if (userLocation && shopLat != null && shopLon != null) {
+                distance = getDistanceFromLatLonInKm(
+                  userLocation.latitude,
+                  userLocation.longitude,
+                  shopLat,
+                  shopLon
+                )
+              }
+              allProducts.push({ ...product, id: productId, ownerUid: userUid, distance })
             })
           }
           if (user.product) {
             Object.entries(user.product).forEach(([productId, product]) => {
-              allProducts.push({ ...product, id: productId, ownerUid: userUid })
+              let distance: number | undefined = undefined
+              if (userLocation && shopLat != null && shopLon != null) {
+                distance = getDistanceFromLatLonInKm(
+                  userLocation.latitude,
+                  userLocation.longitude,
+                  shopLat,
+                  shopLon
+                )
+              }
+              allProducts.push({ ...product, id: productId, ownerUid: userUid, distance })
             })
           }
         })
       }
-      setProducts(allProducts)
-      setFilteredProducts(allProducts)
+
+      // Sort products by distance if distance is available
+      const sortedProducts = allProducts.sort((a, b) => {
+        if (a.distance !== undefined && b.distance !== undefined) {
+          return a.distance - b.distance
+        }
+        return 0
+      })
+
+      setProducts(sortedProducts)
+      setFilteredProducts(sortedProducts)
       setLoading(false)
     })
-  }, [])
+  }, [userLocation])
 
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     const term = event.target.value.toLowerCase()
@@ -137,6 +236,13 @@ export function SearchPageComponent() {
       </header>
 
       <main className="flex-grow pt-8 pb-24 md:pb-16 px-4 md:px-6">
+        {/* Display error message if any */}
+        {error && (
+          <div className="bg-red-100 text-red-700 p-4 text-center mb-6">
+            {error}
+          </div>
+        )}
+
         {/* Search Section */}
         <section className="mb-12">
           <h1 className="text-3xl font-bold text-[#000050] mb-6 text-center">Search Products</h1>
@@ -154,7 +260,7 @@ export function SearchPageComponent() {
 
         {/* Tabs for Different Product Categories */}
         <Tabs defaultValue="all">
-          <TabsList>
+          <TabsList className="mb-4">
             <TabsTrigger value="all">All Products</TabsTrigger>
             <TabsTrigger value="Electronics">Electronics</TabsTrigger>
             <TabsTrigger value="Sports">Sports</TabsTrigger>
@@ -167,31 +273,40 @@ export function SearchPageComponent() {
               <h2 className="text-2xl font-semibold text-[#000050] mb-6">
                 {searchTerm ? `Search Results for "${searchTerm}"` : "All Products"}
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredProducts.map((product) => (
-                  <Card key={product.id}>
-                    <CardContent className="p-4">
-                      <div className="relative w-full h-48 overflow-hidden rounded-lg">
-                        <Image
-                          src={product.imageURL || m1}
-                          alt={product.heading}
-                          layout="fill"
-                          objectFit="contain"
-                          className="rounded-lg"
-                        />
-                      </div>
-                      <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
-                      <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
-                      <Button
-                        className="w-full mt-4 bg-[#000050] hover:bg-[#000080]"
-                        onClick={() => router.push(`/addtocart/${product.ownerUid}/${product.id}`)}
-                      >
-                        Add to Cart
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              {filteredProducts.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {filteredProducts.map((product) => (
+                    <Card key={product.id}>
+                      <CardContent className="p-4">
+                        <div className="relative w-full h-48 overflow-hidden rounded-lg">
+                          <Image
+                            src={product.imageURL || m1}
+                            alt={product.heading}
+                            layout="fill"
+                            objectFit="contain"
+                            className="rounded-lg"
+                          />
+                        </div>
+                        <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
+                        <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
+                        {product.distance !== undefined && (
+                          <p className="text-sm text-gray-600 mb-2">
+                            Distance: {formatDistance(product.distance)}
+                          </p>
+                        )}
+                        <Button
+                          className="w-full mt-2 bg-[#000050] hover:bg-[#000080]"
+                          onClick={() => router.push(`/addtocart/${product.ownerUid}/${product.id}`)}
+                        >
+                          Add to Cart
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-gray-600">No products found.</p>
+              )}
             </section>
           </TabsContent>
 
@@ -199,33 +314,42 @@ export function SearchPageComponent() {
           <TabsContent value="Electronics">
             <section>
               <h2 className="text-2xl font-semibold text-[#000050] mb-6">Electronics</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredProducts
-                  .filter((product) => product.category === 'Electronics')
-                  .map((product) => (
-                    <Card key={product.id}>
-                      <CardContent className="p-4">
-                        <div className="relative w-full h-48 overflow-hidden rounded-lg">
-                          <Image
-                            src={product.imageURL || m1}
-                            alt={product.heading}
-                            layout="fill"
-                            objectFit="contain"
-                            className="rounded-lg"
-                          />
-                        </div>
-                        <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
-                        <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
-                        <Button
-                          className="w-full mt-4 bg-[#000050] hover:bg-[#000080]"
-                          onClick={() => router.push(`/addtocart/${product.ownerUid}/${product.id}`)}
-                        >
-                          Add to Cart
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-              </div>
+              {filteredProducts.filter(p => p.category === 'Electronics').length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {filteredProducts
+                    .filter((product) => product.category === 'Electronics')
+                    .map((product) => (
+                      <Card key={product.id}>
+                        <CardContent className="p-4">
+                          <div className="relative w-full h-48 overflow-hidden rounded-lg">
+                            <Image
+                              src={product.imageURL || m1}
+                              alt={product.heading}
+                              layout="fill"
+                              objectFit="contain"
+                              className="rounded-lg"
+                            />
+                          </div>
+                          <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
+                          <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
+                          {product.distance !== undefined && (
+                            <p className="text-sm text-gray-600 mb-2">
+                              Distance: {formatDistance(product.distance)}
+                            </p>
+                          )}
+                          <Button
+                            className="w-full mt-2 bg-[#000050] hover:bg-[#000080]"
+                            onClick={() => router.push(`/addtocart/${product.ownerUid}/${product.id}`)}
+                          >
+                            Add to Cart
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                </div>
+              ) : (
+                <p className="text-center text-gray-600">No Electronics products found.</p>
+              )}
             </section>
           </TabsContent>
 
@@ -233,33 +357,42 @@ export function SearchPageComponent() {
           <TabsContent value="Sports">
             <section>
               <h2 className="text-2xl font-semibold text-[#000050] mb-6">Sports</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredProducts
-                  .filter((product) => product.category === 'Sports')
-                  .map((product) => (
-                    <Card key={product.id}>
-                      <CardContent className="p-4">
-                        <div className="relative w-full h-48 overflow-hidden rounded-lg">
-                          <Image
-                            src={product.imageURL || m1}
-                            alt={product.heading}
-                            layout="fill"
-                            objectFit="contain"
-                            className="rounded-lg"
-                          />
-                        </div>
-                        <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
-                        <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
-                        <Button
-                          className="w-full mt-4 bg-[#000050] hover:bg-[#000080]"
-                          onClick={() => router.push(`/addtocart/${product.ownerUid}/${product.id}`)}
-                        >
-                          Add to Cart
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-              </div>
+              {filteredProducts.filter(p => p.category === 'Sports').length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {filteredProducts
+                    .filter((product) => product.category === 'Sports')
+                    .map((product) => (
+                      <Card key={product.id}>
+                        <CardContent className="p-4">
+                          <div className="relative w-full h-48 overflow-hidden rounded-lg">
+                            <Image
+                              src={product.imageURL || m1}
+                              alt={product.heading}
+                              layout="fill"
+                              objectFit="contain"
+                              className="rounded-lg"
+                            />
+                          </div>
+                          <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
+                          <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
+                          {product.distance !== undefined && (
+                            <p className="text-sm text-gray-600 mb-2">
+                              Distance: {formatDistance(product.distance)}
+                            </p>
+                          )}
+                          <Button
+                            className="w-full mt-2 bg-[#000050] hover:bg-[#000080]"
+                            onClick={() => router.push(`/addtocart/${product.ownerUid}/${product.id}`)}
+                          >
+                            Add to Cart
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                </div>
+              ) : (
+                <p className="text-center text-gray-600">No Sports products found.</p>
+              )}
             </section>
           </TabsContent>
 
@@ -267,33 +400,42 @@ export function SearchPageComponent() {
           <TabsContent value="Home">
             <section>
               <h2 className="text-2xl font-semibold text-[#000050] mb-6">Home</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredProducts
-                  .filter((product) => product.category === 'Home')
-                  .map((product) => (
-                    <Card key={product.id}>
-                      <CardContent className="p-4">
-                        <div className="relative w-full h-48 overflow-hidden rounded-lg">
-                          <Image
-                            src={product.imageURL || m1}
-                            alt={product.heading}
-                            layout="fill"
-                            objectFit="contain"
-                            className="rounded-lg"
-                          />
-                        </div>
-                        <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
-                        <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
-                        <Button
-                          className="w-full mt-4 bg-[#000050] hover:bg-[#000080]"
-                          onClick={() => router.push(`/addtocart/${product.ownerUid}/${product.id}`)}
-                        >
-                          Add to Cart
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-              </div>
+              {filteredProducts.filter(p => p.category === 'Home').length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {filteredProducts
+                    .filter((product) => product.category === 'Home')
+                    .map((product) => (
+                      <Card key={product.id}>
+                        <CardContent className="p-4">
+                          <div className="relative w-full h-48 overflow-hidden rounded-lg">
+                            <Image
+                              src={product.imageURL || m1}
+                              alt={product.heading}
+                              layout="fill"
+                              objectFit="contain"
+                              className="rounded-lg"
+                            />
+                          </div>
+                          <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
+                          <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
+                          {product.distance !== undefined && (
+                            <p className="text-sm text-gray-600 mb-2">
+                              Distance: {formatDistance(product.distance)}
+                            </p>
+                          )}
+                          <Button
+                            className="w-full mt-2 bg-[#000050] hover:bg-[#000080]"
+                            onClick={() => router.push(`/addtocart/${product.ownerUid}/${product.id}`)}
+                          >
+                            Add to Cart
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                </div>
+              ) : (
+                <p className="text-center text-gray-600">No Home products found.</p>
+              )}
             </section>
           </TabsContent>
 
