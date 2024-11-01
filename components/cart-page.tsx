@@ -179,13 +179,16 @@ export function CartPage() {
               cartItems.map((item) => (
                 <Card key={item.id}>
                   <CardContent className="p-3 sm:p-4 flex items-center space-x-2 sm:space-x-4">
-                    <Image
-                      src={item.productDetails.imageURL}
-                      alt={item.productDetails.heading}
-                      width={100}
-                      height={100}
-                      className="w-16 h-16 sm:w-24 sm:h-24 object-cover rounded"
-                    />
+                    <div className="flex-shrink-0 flex items-center justify-center h-24 w-24">
+                      <div className="relative w-full h-full">
+                        <Image
+                          src={item.productDetails.imageURL}
+                          alt={item.productDetails.heading}
+                          layout="fill"
+                          className="object-contain rounded"
+                        />
+                      </div>
+                    </div>
                     <div className="flex-grow min-w-0">
                       <h2 className="text-sm sm:text-base font-semibold truncate">
                         {item.productDetails.heading}
@@ -194,7 +197,7 @@ export function CartPage() {
                         Quantity: {item.quantity}
                       </p>
                       <p className="text-sm sm:text-base text-[#000080] font-bold">
-                        ${(item.productDetails.price * item.quantity).toFixed(2)}
+                        ₹{(item.productDetails.price * item.quantity).toFixed(2)}
                       </p>
                     </div>
                     <div className="flex flex-col space-y-2">
@@ -236,7 +239,7 @@ export function CartPage() {
                   </p>
                   <p className="flex justify-between text-base sm:text-lg font-bold">
                     <span>Total Cost:</span>
-                    <span>${totalCost.toFixed(2)}</span>
+                    <span>₹{totalCost.toFixed(2)}</span>
                   </p>
                 </div>
                 <div className="mb-4">

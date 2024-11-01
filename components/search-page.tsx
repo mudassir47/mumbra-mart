@@ -3,11 +3,11 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { usePathname } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs" // Tabs imports are now being used
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Truck, Shield, HandMetal, Store, Search, Home, Heart, ShoppingCart, User } from 'lucide-react'
 import mumbra from "@/img/Mumbra.png"
 import m1 from "@/img/1.png"
@@ -21,10 +21,13 @@ interface Product {
   imageURL?: string;
   price: number;
   category: string;
+  description?: string;
+  ownerUid: string;
 }
 
 interface UserType {
   products?: Record<string, Product>;
+  product?: Record<string, Product>;
 }
 
 const benefits = [
@@ -75,16 +78,23 @@ export function SearchPageComponent() {
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState<boolean>(true)
 
+  const router = useRouter();
+
   useEffect(() => {
     const productsRef = ref(database, 'users')
     onValue(productsRef, (snapshot) => {
       const usersData: Record<string, UserType> | null = snapshot.val()
       const allProducts: Product[] = []
       if (usersData) {
-        Object.values(usersData).forEach((user: UserType) => {
+        Object.entries(usersData).forEach(([userUid, user]) => {
           if (user.products) {
-            Object.values(user.products).forEach((product: Product) => {
-              allProducts.push(product)
+            Object.entries(user.products).forEach(([productId, product]) => {
+              allProducts.push({ ...product, id: productId, ownerUid: userUid })
+            })
+          }
+          if (user.product) {
+            Object.entries(user.product).forEach(([productId, product]) => {
+              allProducts.push({ ...product, id: productId, ownerUid: userUid })
             })
           }
         })
@@ -146,9 +156,9 @@ export function SearchPageComponent() {
         <Tabs defaultValue="all">
           <TabsList>
             <TabsTrigger value="all">All Products</TabsTrigger>
-            <TabsTrigger value="category1">Category 1</TabsTrigger>
-            <TabsTrigger value="category2">Category 2</TabsTrigger>
-            {/* Add more categories as needed */}
+            <TabsTrigger value="Electronics">Electronics</TabsTrigger>
+            <TabsTrigger value="Sports">Sports</TabsTrigger>
+            <TabsTrigger value="Home">Home</TabsTrigger>
           </TabsList>
 
           {/* All Products Tab */}
@@ -157,21 +167,27 @@ export function SearchPageComponent() {
               <h2 className="text-2xl font-semibold text-[#000050] mb-6">
                 {searchTerm ? `Search Results for "${searchTerm}"` : "All Products"}
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {filteredProducts.map((product) => (
-                  <Card key={product.id} className="overflow-hidden transition-shadow duration-300 hover:shadow-lg">
+                  <Card key={product.id}>
                     <CardContent className="p-4">
-                      <Image
-                        src={product.imageURL || m1}
-                        alt={product.heading}
-                        width={200}
-                        height={200}
-                        className="w-full h-32 object-cover mb-4 rounded"
-                      />
-                      <h3 className="font-semibold text-lg mb-2 line-clamp-2">{product.heading}</h3>
+                      <div className="relative w-full h-48 overflow-hidden rounded-lg">
+                        <Image
+                          src={product.imageURL || m1}
+                          alt={product.heading}
+                          layout="fill"
+                          objectFit="contain"
+                          className="rounded-lg"
+                        />
+                      </div>
+                      <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
                       <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
-                      <p className="text-sm text-gray-600 mb-2">{product.category}</p>
-                      <Button className="w-full mt-2 bg-[#000050] hover:bg-[#000080] transition-colors duration-200">Add to Cart</Button>
+                      <Button
+                        className="w-full mt-4 bg-[#000050] hover:bg-[#000080]"
+                        onClick={() => router.push(`/addtocart/${product.ownerUid}/${product.id}`)}
+                      >
+                        Add to Cart
+                      </Button>
                     </CardContent>
                   </Card>
                 ))}
@@ -179,22 +195,108 @@ export function SearchPageComponent() {
             </section>
           </TabsContent>
 
-          {/* Example of another category */}
-          <TabsContent value="category1">
+          {/* Electronics Tab */}
+          <TabsContent value="Electronics">
             <section>
-              <h2 className="text-2xl font-semibold text-[#000050] mb-6">Category 1 Products</h2>
-              {/* Filtered Products by Category 1 */}
-              {/* You can implement filtering logic here */}
+              <h2 className="text-2xl font-semibold text-[#000050] mb-6">Electronics</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {filteredProducts
+                  .filter((product) => product.category === 'Electronics')
+                  .map((product) => (
+                    <Card key={product.id}>
+                      <CardContent className="p-4">
+                        <div className="relative w-full h-48 overflow-hidden rounded-lg">
+                          <Image
+                            src={product.imageURL || m1}
+                            alt={product.heading}
+                            layout="fill"
+                            objectFit="contain"
+                            className="rounded-lg"
+                          />
+                        </div>
+                        <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
+                        <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
+                        <Button
+                          className="w-full mt-4 bg-[#000050] hover:bg-[#000080]"
+                          onClick={() => router.push(`/addtocart/${product.ownerUid}/${product.id}`)}
+                        >
+                          Add to Cart
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+              </div>
             </section>
           </TabsContent>
 
-          <TabsContent value="category2">
+          {/* Sports Tab */}
+          <TabsContent value="Sports">
             <section>
-              <h2 className="text-2xl font-semibold text-[#000050] mb-6">Category 2 Products</h2>
-              {/* Filtered Products by Category 2 */}
-              {/* You can implement filtering logic here */}
+              <h2 className="text-2xl font-semibold text-[#000050] mb-6">Sports</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {filteredProducts
+                  .filter((product) => product.category === 'Sports')
+                  .map((product) => (
+                    <Card key={product.id}>
+                      <CardContent className="p-4">
+                        <div className="relative w-full h-48 overflow-hidden rounded-lg">
+                          <Image
+                            src={product.imageURL || m1}
+                            alt={product.heading}
+                            layout="fill"
+                            objectFit="contain"
+                            className="rounded-lg"
+                          />
+                        </div>
+                        <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
+                        <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
+                        <Button
+                          className="w-full mt-4 bg-[#000050] hover:bg-[#000080]"
+                          onClick={() => router.push(`/addtocart/${product.ownerUid}/${product.id}`)}
+                        >
+                          Add to Cart
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+              </div>
             </section>
           </TabsContent>
+
+          {/* Home Tab */}
+          <TabsContent value="Home">
+            <section>
+              <h2 className="text-2xl font-semibold text-[#000050] mb-6">Home</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {filteredProducts
+                  .filter((product) => product.category === 'Home')
+                  .map((product) => (
+                    <Card key={product.id}>
+                      <CardContent className="p-4">
+                        <div className="relative w-full h-48 overflow-hidden rounded-lg">
+                          <Image
+                            src={product.imageURL || m1}
+                            alt={product.heading}
+                            layout="fill"
+                            objectFit="contain"
+                            className="rounded-lg"
+                          />
+                        </div>
+                        <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
+                        <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
+                        <Button
+                          className="w-full mt-4 bg-[#000050] hover:bg-[#000080]"
+                          onClick={() => router.push(`/addtocart/${product.ownerUid}/${product.id}`)}
+                        >
+                          Add to Cart
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+              </div>
+            </section>
+          </TabsContent>
+
         </Tabs>
 
         {/* Benefits Section */}

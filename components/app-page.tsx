@@ -271,23 +271,28 @@ export default function Pages() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {products.map((product) => (
                 <Card key={product.id}>
-                  <CardContent className="p-4">
-                    <Image
-                      src={product.imageURL || m1}
-                      alt={product.heading}
-                      width={200}
-                      height={200}
-                      className="w-full h-32 object-cover mb-4 rounded"
-                    />
-                    <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
-                    <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
-                    <Button
-                      className="w-full mt-4 bg-[#000050] hover:bg-[#000080]"
-                      onClick={() => router.push(`/addtocart/${product.ownerUid}/${product.id}`)}
-                    >
-                      Add to Cart
-                    </Button>
-                  </CardContent>
+               <CardContent className="p-4">
+  <div className="relative w-full h-48 overflow-hidden rounded-lg">
+    <Image
+      src={product.imageURL || m1}
+      alt={product.heading}
+      layout="fill" // Use fill layout to cover the container
+      objectFit="contain" // Adjust this to 'cover' or 'contain' based on your preference
+      className="rounded-lg" // Optional: ensure the image has rounded corners
+    />
+  </div>
+  <h3 className="font-semibold text-lg mb-2">{product.heading}</h3>
+  <p className="text-[#000050] font-bold">${product.price.toFixed(2)}</p>
+  <Button
+    className="w-full mt-4 bg-[#000050] hover:bg-[#000080]"
+    onClick={() => router.push(`/addtocart/${product.ownerUid}/${product.id}`)}
+  >
+    Add to Cart
+  </Button>
+</CardContent>
+
+
+
                 </Card>
               ))}
             </div>

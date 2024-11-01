@@ -50,7 +50,7 @@ export function Profile() {
           setName(data.name || '');
           setEmail(data.email || '');
           setProfileImage(data.profileImage || '');
-          setHasShop(!!data.shop);
+          setHasShop(!!data.shop); // Check if the shop exists
         }
       }
       setLoading(false);
@@ -74,6 +74,10 @@ export function Profile() {
 
   const handleGoToShop = () => {
     router.push('/myshop'); // Navigate to /myshop
+  };
+
+  const handleDownloadQRCode = () => {
+    router.push('/qr'); // Navigate to /qr
   };
 
   if (loading) {
@@ -113,12 +117,20 @@ export function Profile() {
             Register a Shop
           </Button>
         ) : (
-          <Button 
-            onClick={handleGoToShop} 
-            className="mb-6 w-full bg-[#000052] hover:bg-[#000052]/90"
-          >
-            My Shop
-          </Button>
+          <>
+            <Button 
+              onClick={handleGoToShop} 
+              className="mb-6 w-full bg-[#000052] hover:bg-[#000052]/90"
+            >
+              My Shop
+            </Button>
+            <Button 
+              onClick={handleDownloadQRCode} 
+              className="mb-6 w-full bg-[#000052] hover:bg-[#000052]/90"
+            >
+              Download QR Code
+            </Button>
+          </>
         )}
 
         <Tabs defaultValue="account" className="space-y-4">

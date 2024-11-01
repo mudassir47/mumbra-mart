@@ -1,16 +1,16 @@
 // components/Login.tsx
 
-'use client'
+'use client';
 
-import { useState } from 'react'
-import Image from 'next/image'
-import { useRouter } from 'next/navigation'
-import { auth, provider, signInWithPopup, database, ref, get, set, update } from '../firebase'
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import mumbra from "@/img/2.png"
+import { useState } from 'react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { auth, provider, signInWithPopup, database, ref, get, set, update } from '../firebase';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import mumbra from "@/img/2.png";
 
 // Define a User type to avoid using `any`
 interface User {
@@ -21,47 +21,48 @@ interface User {
 }
 
 export function Login() {
-  const [email, setEmail] = useState<string>('') // Specify type as string
-  const [phone, setPhone] = useState<string>('') // Specify type as string
-  const [isNewUser, setIsNewUser] = useState<boolean>(false) // Specify type as boolean
-  const [currentUser, setCurrentUser] = useState<User | null>(null) // Specify type as User | null
-  const [loading, setLoading] = useState<boolean>(false) // Specify type as boolean
-  const [error, setError] = useState<string | null>(null) // Specify type as string | null
-  const router = useRouter()
+  const [email, setEmail] = useState<string>(''); // Specify type as string
+  const [phone, setPhone] = useState<string>(''); // Specify type as string
+  const [isNewUser, setIsNewUser] = useState<boolean>(false); // Specify type as boolean
+  const [currentUser, setCurrentUser] = useState<User | null>(null); // Specify type as User | null
+  const [loading, setLoading] = useState<boolean>(false); // Specify type as boolean
+  const [error, setError] = useState<string | null>(null); // Specify type as string | null
+  const router = useRouter();
 
   const handleGoogleLogin = async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
     try {
-      const result = await signInWithPopup(auth, provider)
+      const result = await signInWithPopup(auth, provider);
       const user = result.user as User; // Specify type as User
-      setCurrentUser(user)
+      setCurrentUser(user);
 
-      const userRef = ref(database, `users/${user.uid}`)
-      const snapshot = await get(userRef)
+      const userRef = ref(database, `users/${user.uid}`);
+      const snapshot = await get(userRef);
 
       if (snapshot.exists()) {
         // User exists, redirect to home
-        router.push('/')
+        router.push('/');
       } else {
         // New user, save initial data including location
-        const location = await getCurrentLocation()
+        const location = await getCurrentLocation();
         await set(userRef, {
+          uid: user.uid, // Save the UID in the user document
           name: user.displayName,
           email: user.email,
           profileImage: user.photoURL,
           latitude: location?.latitude,
           longitude: location?.longitude,
-        })
-        setIsNewUser(true)
+        });
+        setIsNewUser(true);
       }
     } catch (error) {
-      console.error('Error during Google login:', error)
-      setError('Failed to sign in with Google. Please try again.')
+      console.error('Error during Google login:', error);
+      setError('Failed to sign in with Google. Please try again.');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const getCurrentLocation = () => {
     return new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
@@ -71,51 +72,51 @@ export function Login() {
             resolve({
               latitude: position.coords.latitude,
               longitude: position.coords.longitude,
-            })
+            });
           },
           (error) => {
-            console.error('Error getting location:', error)
-            resolve(null) // In case of error, resolve with null
+            console.error('Error getting location:', error);
+            resolve(null); // In case of error, resolve with null
           }
-        )
+        );
       } else {
-        console.error('Geolocation is not supported by this browser.')
-        resolve(null)
+        console.error('Geolocation is not supported by this browser.');
+        resolve(null);
       }
-    })
-  }
+    });
+  };
 
   const handleEmailSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     // Implement email submission logic here
-    console.log('Email submitted:', email)
-  }
+    console.log('Email submitted:', email);
+  };
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (currentUser) {
       const phoneRegex = /^(\d{3}-\d{3}-\d{4}|\d{10})$/;
       if (!phoneRegex.test(phone)) {
-        setError('Please enter a valid phone number (e.g., 123-456-7890 or 1234567890).')
-        return
+        setError('Please enter a valid phone number (e.g., 123-456-7890 or 1234567890).');
+        return;
       }
 
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       try {
-        const userRef = ref(database, `users/${currentUser.uid}`)
+        const userRef = ref(database, `users/${currentUser.uid}`);
         await update(userRef, {
           phoneNumber: phone,
-        })
-        router.push('/')
+        });
+        router.push('/');
       } catch (error) {
-        console.error('Error saving phone number:', error)
-        setError('Failed to save phone number. Please try again.')
+        console.error('Error saving phone number:', error);
+        setError('Failed to save phone number. Please try again.');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-  }
+  };
 
   if (isNewUser && currentUser) {
     return (
@@ -148,7 +149,7 @@ export function Login() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
